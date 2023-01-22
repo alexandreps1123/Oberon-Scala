@@ -26,6 +26,9 @@ case class PaigesBasedGenerator() extends CCodeGenerator {
     val mainDefines = generateConstants(module.constants)
     val userDefinedTypes = generateUserDefinedTypes(module.userTypes)
     val globalVars = declareVars(module.variables, module.userTypes, 0)
+    
+    val forEachDefine = genForEachDef()
+
     val mainBody = module.stmt match {
       case Some(stmt) =>
         text("int main() {") / generateStmt(
@@ -34,7 +37,7 @@ case class PaigesBasedGenerator() extends CCodeGenerator {
         ) + Doc.char('}')
       case None => text("int main() {}")
     }
-    val CCode = mainHeader + userDefinedTypes / globalVars / mainDefines + mainProcedures / mainBody
+    val CCode = mainHeader + forEachDefine / userDefinedTypes / globalVars / mainDefines + mainProcedures / mainBody
     CCode.render(60)
   }
 
@@ -206,6 +209,10 @@ case class PaigesBasedGenerator() extends CCodeGenerator {
         textln(indent, s"while (${genExp(condition)}) {") +
           generateStmt(stmt, indent + indentSize) +
           textln(indent, "}")
+      case ForEachStmt(varName, exp, stmt) =>
+        textln(indent, s"foreach(${varName}, ${genExp(exp)}) {") +
+          generateStmt(stmt, indent + indentSize) +
+          textln(indent, "}")
       case ReturnStmt(exp) =>
         textln(indent, s"return ${genExp(exp)};")
 
@@ -266,8 +273,19 @@ case class PaigesBasedGenerator() extends CCodeGenerator {
         val arrayName = genExp(arrayBase)
         val arrayIndex = genExp(index)
         s"$arrayName[$arrayIndex]"
-      case _ => throw new Exception("expression not found")
+      case _ => throw new Exception("expression not found" + exp)
     }
+  }
+
+  // ref: https://stackoverflow.com/a/400970
+  def genForEachDef(indent: Int = indentSize): Doc = {
+    textln(s"#define foreach(item, array) \\") +
+    textln(indent, s"for(int keep = 1, \\") +
+    textln(indent, s"count = 0,\\") +
+    textln(indent, s"size = sizeof (array) / sizeof *(array); \\") +
+    textln(indent, s"keep && count != size; \\") +
+    textln(indent, s"keep = !keep, count++) \\") +
+    textln(indent, s"for(item = (array) + count; keep; keep = !keep)")
   }
 
   def textln(str: String): Doc = text(str) + line
