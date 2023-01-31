@@ -1,16 +1,10 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#define foreach(item, array) \
-    for(int keep = 1, \
-    count = 0,\
-    size = sizeof (array) / sizeof *(array); \
-    keep && count != size; \
-    keep = !keep, count++) \
-    for(item = (array) + count; keep; keep = !keep)
+#define SIZEOF_ARRAY(a) (sizeof(a) / sizeof(a[0]))
 
 
-int answer, n, m;
+int answer, n, m, v;
 int a[3];
 int cnt[11];
 
@@ -32,9 +26,9 @@ int main() {
     n = 10;
     m = 3;
     answer = n;
-    foreach(int *v, a) {
-        cnt[*v] = cnt[*v] + 1;
-        if (cnt[*v] == 1) {
+    for(int index = 0; index < SIZEOF_ARRAY(a); index++, v = a[index]) {
+        cnt[v] = cnt[v] + 1;
+        if (cnt[v] == 1) {
             answer = answer - 1;
         }
     }
