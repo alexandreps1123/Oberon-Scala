@@ -27,7 +27,7 @@ case class PaigesBasedGenerator() extends CCodeGenerator {
     val userDefinedTypes = generateUserDefinedTypes(module.userTypes)
     val globalVars = declareVars(module.variables, module.userTypes, 0)
     
-    val forEachDefine = genForEachDef()
+    val sizeofMacro = genSizeofMacro()
 
     val mainBody = module.stmt match {
       case Some(stmt) =>
@@ -37,7 +37,7 @@ case class PaigesBasedGenerator() extends CCodeGenerator {
         ) + Doc.char('}')
       case None => text("int main() {}")
     }
-    val CCode = mainHeader + forEachDefine / userDefinedTypes / globalVars / mainDefines + mainProcedures / mainBody
+    val CCode = mainHeader + sizeofMacro / userDefinedTypes / globalVars / mainDefines + mainProcedures / mainBody
     CCode.render(60)
   }
 
@@ -193,7 +193,7 @@ case class PaigesBasedGenerator() extends CCodeGenerator {
         ) + line
       case IfElseStmt(condition, thenStmt, elseStmt) =>
         val ifCond =
-          textln(indent, s"if (${genExp(condition)}) {") +
+          textln(indent, s"if (${genExp(condition)}) {") + 
             generateStmt(thenStmt, indent + indentSize) +
             indentation(indent) + text("}")
         val elseCond = elseStmt match {
@@ -210,7 +210,7 @@ case class PaigesBasedGenerator() extends CCodeGenerator {
           generateStmt(stmt, indent + indentSize) +
           textln(indent, "}")
       case ForEachStmt(varName, exp, stmt) =>
-        textln(indent, s"foreach(${varName}, ${genExp(exp)}) {") +
+        textln(indent, s"for(int index = 0; index < SIZEOF_ARRAY(${genExp(exp)}); index++, $varName = ${genExp(exp)}[index]) {") +
           generateStmt(stmt, indent + indentSize) +
           textln(indent, "}")
       case ReturnStmt(exp) =>
@@ -277,15 +277,8 @@ case class PaigesBasedGenerator() extends CCodeGenerator {
     }
   }
 
-  // ref: https://stackoverflow.com/a/400970
-  def genForEachDef(indent: Int = indentSize): Doc = {
-    textln(s"#define foreach(item, array) \\") +
-    textln(indent, s"for(int keep = 1, \\") +
-    textln(indent, s"count = 0,\\") +
-    textln(indent, s"size = sizeof (array) / sizeof *(array); \\") +
-    textln(indent, s"keep && count != size; \\") +
-    textln(indent, s"keep = !keep, count++) \\") +
-    textln(indent, s"for(item = (array) + count; keep; keep = !keep)")
+  def genSizeofMacro(indent: Int = indentSize): Doc = {
+    textln(s"#define SIZEOF_ARRAY(a) (sizeof(a) / sizeof(a[0]))")
   }
 
   def textln(str: String): Doc = text(str) + line
