@@ -33,7 +33,9 @@ case class PaigesBasedGenerator() extends CCodeGenerator {
       case Some(stmt) =>
         text("int main() {") / generateStmt(
           stmt,
-          indentSize
+          indentSize,
+          module.variables, 
+          module.userTypes
         ) + Doc.char('}')
       case None => text("int main() {}")
     }
@@ -41,7 +43,25 @@ case class PaigesBasedGenerator() extends CCodeGenerator {
     CCode.render(60)
   }
 
+  def findArrayType(arrayName: String, variables: List[VariableDeclaration], userTypes: List[UserDefinedType]): String = {
+    
+    var aux: String = ""
 
+    for (variable <- variables) {
+      if (variable.name == arrayName) {   
+        variable.variableType match {
+        case ArrayType(length, innerType) =>
+          val variableType: String = getCType(innerType, userTypes)
+          aux = variableType
+        case ReferenceToUserDefinedType(userTypeName) =>
+          aux = userTypeName
+        }
+      }
+    }
+
+    aux
+  }
+  
 
   def generateProcedure(procedure: Procedure, userTypes: List[UserDefinedType]): Doc = {
     val returnType = procedure.returnType match {
@@ -174,11 +194,11 @@ case class PaigesBasedGenerator() extends CCodeGenerator {
       empty
   }
 
-  def generateStmt(statement: Statement, indent: Int = indentSize): Doc = {
+  def generateStmt(statement: Statement, indent: Int = indentSize, variables: List[VariableDeclaration] = Nil, userTypes: List[UserDefinedType] = Nil): Doc = {
 
     statement match {
       case SequenceStmt(stmts) =>
-        val multipleStmts = stmts.map(stmt => generateStmt(stmt, indent))
+        val multipleStmts = stmts.map(stmt => generateStmt(stmt, indent, variables, userTypes))
         intercalate(empty, multipleStmts)
       case ReadIntStmt(varName) =>
         textln(indent, s"""scanf("%d", &$varName);""")
@@ -194,24 +214,28 @@ case class PaigesBasedGenerator() extends CCodeGenerator {
       case IfElseStmt(condition, thenStmt, elseStmt) =>
         val ifCond =
           textln(indent, s"if (${genExp(condition)}) {") + 
-            generateStmt(thenStmt, indent + indentSize) +
+            generateStmt(thenStmt, indent + indentSize, variables, userTypes) +
             indentation(indent) + text("}")
         val elseCond = elseStmt match {
           case Some(stmt) =>
             textln(" else {") + generateStmt(
               stmt,
-              indent + indentSize
+              indent + indentSize,
+              variables,
+              userTypes
             ) + textln(indent, "}")
           case None => line
         }
         ifCond + elseCond
       case WhileStmt(condition, stmt) =>
         textln(indent, s"while (${genExp(condition)}) {") +
-          generateStmt(stmt, indent + indentSize) +
+          generateStmt(stmt, indent + indentSize, variables, userTypes) +
           textln(indent, "}")
       case ForEachStmt(varName, exp, stmt) =>
-        textln(indent, s"for(int index = 0; index < SIZEOF_ARRAY(${genExp(exp)}); index++, $varName = ${genExp(exp)}[index]) {") +
-          generateStmt(stmt, indent + indentSize) +
+        val arrayType: String = findArrayType(genExp(exp), variables, userTypes)
+        textln(indent, s"for(int indexForEach = 0; indexForEach < SIZEOF_ARRAY(${genExp(exp)}); indexForEach++) {") +
+          textln(indent + indentSize, s"$arrayType $varName = ${genExp(exp)}[indexForEach]") +
+          generateStmt(stmt, indent + indentSize, variables, userTypes) +
           textln(indent, "}")
       case ReturnStmt(exp) =>
         textln(indent, s"return ${genExp(exp)};")
@@ -273,7 +297,7 @@ case class PaigesBasedGenerator() extends CCodeGenerator {
         val arrayName = genExp(arrayBase)
         val arrayIndex = genExp(index)
         s"$arrayName[$arrayIndex]"
-      case _ => throw new Exception("expression not found" + exp)
+      case _ => throw new Exception("expression not found")
     }
   }
 
