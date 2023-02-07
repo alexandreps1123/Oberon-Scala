@@ -23,6 +23,9 @@ class CoreVisitor() extends OberonVisitorAdapter {
     case ForStmt(initStmt, condition, block) =>
       SequenceStmt(List(initStmt.accept(this), WhileStmt(condition, block.accept(this))))
 
+    case ForEachStmt(varName, exp, stmt) =>
+      WhileStmt(BoolValue(true), SequenceStmt(List(AssignmentStmt(VarAssignment(varName), VarExpression(s"${genExp(exp)}[foreach_index]")), AssignmentStmt(VarAssignment(s"foreach_index"), VarExpression(s"foreach_index + 1")), stmt.accept(this), IfElseStmt(GTEExpression(VarExpression(s"foreach_index"), VarExpression(s"LEN(${genExp(exp)})")), ExitStmt(), None))).accept(this))
+
     case IfElseIfStmt (condition, thenStmt, elsifStmt, elseStmt) =>
       IfElseStmt (condition, thenStmt.accept(this), Some(transformElsif(elsifStmt, elseStmt)))
 
@@ -32,6 +35,12 @@ class CoreVisitor() extends OberonVisitorAdapter {
       WhileStmt(condition, stmt.accept(this))
 
     case _ => stmt
+  }
+
+  def genExp(exp: Expression): String = {
+    exp match {
+      case VarExpression(name) => name
+    }
   }
 
   private var nextCaseId = 0
