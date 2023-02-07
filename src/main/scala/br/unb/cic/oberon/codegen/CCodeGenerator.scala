@@ -100,7 +100,7 @@ case class PaigesBasedGenerator() extends CCodeGenerator {
   }
 
   def generateUserDefinedTypes(userTypes: List[UserDefinedType]): Doc = {
-    
+
     var generatedDoc: Doc = empty
 
     for (userType <- userTypes) {
@@ -252,12 +252,17 @@ case class PaigesBasedGenerator() extends CCodeGenerator {
 
       case VarExpression(name) => name
       case FunctionCallExpression(name, args) =>
-        val expressions = args.map(arg => text(genExp(arg)))
-        val functionArgs = intercalate(Doc.char(',') + space, expressions)
-        functionArgs.tightBracketBy(
-          text(name + '('),
-          Doc.char(')')
-        ).render(10000)
+        name match {
+          case "ODD" =>
+            s"${genExp(args(0))} % 2 == 1"
+          case _ =>
+            val expressions = args.map(arg => text(genExp(arg)))
+            val functionArgs = intercalate(Doc.char(',') + space, expressions)
+            functionArgs.tightBracketBy(
+              text(name + '('),
+              Doc.char(')')
+              ).render(10000)
+        }
       case EQExpression(left, right) => s"${genExp(left)} == ${genExp(right)}"
       case NEQExpression(left, right) => s"${genExp(left)} != ${genExp(right)}"
       case GTExpression(left, right) => s"${genExp(left)} > ${genExp(right)}"
