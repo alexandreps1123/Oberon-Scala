@@ -187,7 +187,12 @@ case class PaigesBasedGenerator() extends CCodeGenerator {
       case ProcedureCallStmt(name, args) =>
         name match {
           case "INC" => 
-            indentation(indent) + textln(s"${genExp(args(0))} = ${genExp(args(0))} + 1;")
+            if (args.length == 1) {
+              indentation(indent) + textln(s"${genExp(args(0))} = ${genExp(args(0))} + 1;")
+            }
+            else {
+              indentation(indent) + textln(s"${genExp(args(0))} = ${genExp(args(0))} + ${genExp(args(1))};")
+            }
           case _ =>
             val expressions = args.map(arg => text(genExp(arg)))
             val functionArgs = intercalate(Doc.char(',') + space, expressions)
