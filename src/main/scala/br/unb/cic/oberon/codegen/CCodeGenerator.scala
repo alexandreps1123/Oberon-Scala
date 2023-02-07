@@ -27,7 +27,7 @@ case class PaigesBasedGenerator() extends CCodeGenerator {
     val userDefinedTypes = generateUserDefinedTypes(module.userTypes)
     val globalVars = declareVars(module.variables, module.userTypes, 0)
     
-    val sizeofMacro = genSizeofMacro()
+    val sizeofMacro = genLenMacro()
 
     val mainBody = module.stmt match {
       case Some(stmt) =>
@@ -41,27 +41,7 @@ case class PaigesBasedGenerator() extends CCodeGenerator {
     }
     val CCode = mainHeader + sizeofMacro / userDefinedTypes / globalVars / mainDefines + mainProcedures / mainBody
     CCode.render(60)
-  }
-
-  def findArrayType(arrayName: String, variables: List[VariableDeclaration], userTypes: List[UserDefinedType]): String = {
-    
-    var aux: String = ""
-
-    for (variable <- variables) {
-      if (variable.name == arrayName) {   
-        variable.variableType match {
-        case ArrayType(length, innerType) =>
-          val variableType: String = getCType(innerType, userTypes)
-          aux = variableType
-        case ReferenceToUserDefinedType(userTypeName) =>
-          aux = userTypeName
-        }
-      }
-    }
-
-    aux
-  }
-  
+  }  
 
   def generateProcedure(procedure: Procedure, userTypes: List[UserDefinedType]): Doc = {
     val returnType = procedure.returnType match {
@@ -120,7 +100,7 @@ case class PaigesBasedGenerator() extends CCodeGenerator {
   }
 
   def generateUserDefinedTypes(userTypes: List[UserDefinedType]): Doc = {
-
+    
     var generatedDoc: Doc = empty
 
     for (userType <- userTypes) {
@@ -205,12 +185,17 @@ case class PaigesBasedGenerator() extends CCodeGenerator {
       case WriteStmt(expression) =>
         textln(indent, s"""printf("%d\\n", ${genExp(expression)});""")
       case ProcedureCallStmt(name, args) =>
-        val expressions = args.map(arg => text(genExp(arg)))
-        val functionArgs = intercalate(Doc.char(',') + space, expressions)
-        functionArgs.tightBracketBy(
-          indentation(indent) + text(name + '('),
-          text(");")
-        ) + line
+        name match {
+          case "INC" => 
+            indentation(indent) + textln(s"${genExp(args(0))} = ${genExp(args(0))} + 1;")
+          case _ =>
+            val expressions = args.map(arg => text(genExp(arg)))
+            val functionArgs = intercalate(Doc.char(',') + space, expressions)
+            functionArgs.tightBracketBy(
+              indentation(indent) + text(name + '('),
+              text(");")
+            ) + line
+        }        
       case IfElseStmt(condition, thenStmt, elseStmt) =>
         val ifCond =
           textln(indent, s"if (${genExp(condition)}) {") + 
@@ -229,12 +214,6 @@ case class PaigesBasedGenerator() extends CCodeGenerator {
         ifCond + elseCond
       case WhileStmt(condition, stmt) =>
         textln(indent, s"while (${genExp(condition)}) {") +
-          generateStmt(stmt, indent + indentSize, variables, userTypes) +
-          textln(indent, "}")
-      case ForEachStmt(varName, exp, stmt) =>
-        val arrayType: String = findArrayType(genExp(exp), variables, userTypes)
-        textln(indent, s"for(int indexForEach = 0; indexForEach < SIZEOF_ARRAY(${genExp(exp)}); indexForEach++) {") +
-          textln(indent + indentSize, s"$arrayType $varName = ${genExp(exp)}[indexForEach]") +
           generateStmt(stmt, indent + indentSize, variables, userTypes) +
           textln(indent, "}")
       case ReturnStmt(exp) =>
@@ -301,8 +280,9 @@ case class PaigesBasedGenerator() extends CCodeGenerator {
     }
   }
 
-  def genSizeofMacro(indent: Int = indentSize): Doc = {
-    textln(s"#define SIZEOF_ARRAY(a) (sizeof(a) / sizeof(a[0]))")
+  def genLenMacro(indent: Int = indentSize): Doc = {
+    textln(s"#define LEN(a) (sizeof(a) / sizeof(a[0]))")+
+    textln(s"int foreach_index = 0;")
   }
 
   def textln(str: String): Doc = text(str) + line
