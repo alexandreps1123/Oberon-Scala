@@ -5,7 +5,7 @@ VAR
     b : ARRAY 3 OF INTEGER;
     c : ARRAY 3 OF INTEGER;
     ans : ARRAY 3 OF INTEGER;
-    i, temp, temp2, answer : INTEGER;
+    v, i, temp, temp2, answer : INTEGER;
 
 BEGIN
     a[0] := 0;

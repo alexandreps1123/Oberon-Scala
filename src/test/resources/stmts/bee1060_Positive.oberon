@@ -3,7 +3,7 @@ MODULE bee1060Positive;
 VAR
     a : ARRAY 6 OF REAL;
     
-    ans : REAL;
+    ans, v : REAL;
 
 BEGIN
     a[0] := 7;

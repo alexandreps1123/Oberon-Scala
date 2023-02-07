@@ -5,7 +5,7 @@ TYPE
 
 VAR
   a : A;
-  answer : INTEGER;
+  answer, v : INTEGER;
 
 BEGIN
   a[0] := 0;

@@ -3,7 +3,7 @@ MODULE bee2779;
 VAR
   a : ARRAY 6 OF INTEGER;
   cnt : ARRAY 5 OF INTEGER;
-  answer, n, m : INTEGER;
+  v, answer, n, m : INTEGER;
 
 BEGIN
   a[0] := 3;
